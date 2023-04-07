@@ -60,8 +60,6 @@ def make_players_table(data, cur, conn):
     for row in rows:
         posDict[row[1]] = row[0]
        
-    # for row in rows:
-    #     dict[row[1]] = row[0]
     for player in data['squad']:
         id = player['id']
         name = player['name']
