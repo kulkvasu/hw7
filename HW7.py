@@ -180,13 +180,32 @@ def position_birth_search(position, age, cur, conn):
 #     the passed year. 
 
 def make_winners_table(data, cur, conn):
-    pass
+    cur.execute("CREATE TABLE IF NOT EXISTS Winners (id INTEGER PRIMARY KEY, name TEXT)")
+    for season in data["seasons"]:
+        if season["winner"] is not None:
+            cur.execute("INSERT OR IGNORE INTO Winners (id, name) VALUES (?,?)", (season["winner"]["id"], season["winner"]["name"],))
+    conn.commit()
 
 def make_seasons_table(data, cur, conn):
-    pass
+    cur.execute("DROP TABLE IF EXISTS seasons")
+    cur.execute("CREATE TABLE IF NOT EXISTS seasons (id INTEGER PRIMARY KEY, winner_id TEXT, end_year INTEGER)")
+    s = [(season['id'], season['winner']['id'], season['endDate'][0:4])
+        for season in data['seasons'] if season['winner']]
+    cur.executemany("INSERT OR IGNORE INTO seasons (id, winner_id, end_year) VALUES (?,?,?)", s)
+    conn.commit()
+
+
 
 def winners_since_search(year, cur, conn):
-    pass
+    cur.execute("""
+        SELECT Winners.name, COUNT(*) AS count
+        FROM Seasons
+        JOIN Winners ON Seasons.winner_id = Winners.id
+        WHERE Seasons.end_year >= ?
+        GROUP BY Winners.name
+        """, (year,))
+    final = {name: count for name, count in cur.fetchall()}
+    return final
 
 
 class TestAllMethods(unittest.TestCase):
@@ -245,17 +264,22 @@ class TestAllMethods(unittest.TestCase):
         self.cur2.execute('SELECT * from Winners')
         winners_list = self.cur2.fetchall()
 
-        pass
+       
+        self.assertEqual(type(winners_list[0][0]), int)
+        self.assertEqual(type(winners_list[0][1]), str)
     
     def test_make_seasons_table(self):
         self.cur2.execute('SELECT * from Seasons')
         seasons_list = self.cur2.fetchall()
 
-        pass
+        self.assertEqual(len(seasons_list), 28)
+        self.assertEqual(seasons_list[27][1], '65')
 
     def test_winners_since_search(self):
-
-        pass
+        test = winners_since_search(2015, self.cur2, self.conn2)
+        self.assertEqual(test["Leicester City FC"], 1)
+        self.assertEqual(test["Manchester City FC"], 3)
+        self.assertEqual(len(test),  4)
 
 
 def main():
